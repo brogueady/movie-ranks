@@ -19,7 +19,7 @@ module.exports = {
         'jsx-control-statements'
     ],
     'rules': {
-        'quotes': [ 
+        'quotes': [
             'error',
             'single'
         ],

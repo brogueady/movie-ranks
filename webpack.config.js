@@ -1,8 +1,8 @@
-const path = require('path');
-const HtmlWebpackPlugin = require('html-webpack-plugin');
-const CleanWebpackPlugin = require('clean-webpack-plugin');
+const path = require('path')
+const HtmlWebpackPlugin = require('html-webpack-plugin')
+const CleanWebpackPlugin = require('clean-webpack-plugin')
 
-const outputDirectory = 'dist';
+const outputDirectory = 'dist'
 
 module.exports = {
   entry: ['babel-polyfill', './src/client/index.js'],
@@ -19,7 +19,7 @@ module.exports = {
           loader: 'babel-loader',
           options: {
             presets: ['@babel/preset-env', '@babel/preset-react'],
-            plugins: ["@babel/plugin-proposal-class-properties"]
+            plugins: ['@babel/plugin-proposal-class-properties']
           }
         }
       },
@@ -47,4 +47,4 @@ module.exports = {
       favicon: './public/favicon.ico'
     })
   ]
-};
+}
