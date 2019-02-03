@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+      "target": "es5",
+      "module": "commonjs",
+      "moduleResolution": "node",
+      "experimentalDecorators": true,
+      "noImplicitAny": true,
+      "jsx": "react",
+      "allowJs": true,
+      "watch": true,
+      "sourceMap": true
+    },
+    "exclude": ["node_modules", "webpack.config.js"],
+    "lib": ["es2015.promise"]
+    
+  }

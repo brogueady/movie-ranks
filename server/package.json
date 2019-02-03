@@ -1,0 +1,32 @@
+{
+  "name": "movie-ranks-server",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "webpack --mode production",
+    "start": "npm run build && node src/index.js",
+    "server": "nodemon  src/index.js",
+    "server-debug": "nodemon --inspect src/index.js"
+  },
+  "author": "Adrian Brogan",
+  "dependencies": {
+    "axios": "^0.18.0",
+    "babel-polyfill": "^6.26.0",
+    "express": "^4.16.3",
+    "neo4j-driver": "^1.7.2"
+  },
+  "devDependencies": {
+    "@types/es6-promise": "^3.3.0",
+    "@types/lodash": "^4.14.120",
+    "@types/express": "^4.16.1",
+    "@types/axios": "^0.14.0",
+    "@types/body-parser": "^1.17.0",
+    "concurrently": "^4.0.0",
+    "babel-cli": "^6.26.0",
+    "nodemon": "^1.18.9",
+    "prettier": "^1.16.3",
+    "style-loader": "^0.23.0",
+    "typescript": "^3.3.1",
+    "lodash": "^4.17.11"
+  }
+}
