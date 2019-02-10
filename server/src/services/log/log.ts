@@ -1,9 +1,12 @@
 /* eslint-disable no-console */
+import * as fs from 'fs'
+
+var stream = fs.createWriteStream("log.out", {flags:'a'});
 
 export const logError = (msg: string) => {
-    console.error("CONSOLE ERROR" + msg)
+    stream.write("Error:" + msg + '\n')
 }
 
 export const logInfo = (msg: string) => {
-    console.log(msg)
+    stream.write(msg + '\n')
 }

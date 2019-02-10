@@ -31,6 +31,7 @@ const toMovie = (neo4jMovie: any): Movie => {
         originalLanguage: neo4jMovie.properties.originalLanguage,
         metaScore: neo4jMovie.properties.metaScore,
         title: neo4jMovie.properties.title,
-        genreIds: neo4jMovie.properties.genreIds
+        genreIds: neo4jMovie.properties.genreIds,
+        netflixTitle: neo4jMovie.properties.netflixTitle
     }
 }

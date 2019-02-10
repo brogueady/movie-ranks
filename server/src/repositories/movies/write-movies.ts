@@ -1,6 +1,6 @@
 
 import neo4j from 'neo4j-driver';
-import { Movie, People, BaselineMovie } from '../../domain/movies';
+import { Movie, People, BaselineMovie, OmdbRatings } from '../../domain/movies';
 import { logInfo } from '../../services/log/log';
 import { driver } from './neo4j-driver';
 import * as omdb from '../../clients/omdb/find-movies'
@@ -8,32 +8,58 @@ import * as tmdb from '../../clients/themoviedb/find-movies'
 import * as Es6Promise from 'es6-promise'
 import * as _ from 'lodash'
 
-export type MovieRepoModel = {
-    posterPath: string,
-    overview: string,
-    releaseDate: string,
-    genreIds: Array<number>,
-    originalLanguage: string,
-    title: string,
-    tmdbScore: string,
-    id: string
+async function sleep(millis:number) {
+    return new Es6Promise.Promise((resolve) => setTimeout(resolve, millis))
+ }
+
+export const baselineMovies = async (baselineMovies: Array<BaselineMovie>) => {
+    
+    let deletedCount = await deleteAllMoviesWithTitlesNotIn(baselineMovies.map(baselineMovie => baselineMovie.title))
+    logInfo(`Baseline: removed ${deletedCount} movies from repo`)
+
+    let allMovieTitlesInRepo = await getAllNetflixMovieTitles()
+
+    let promises:any = []
+    const moviesNotInRepo = _.without(baselineMovies.map((movie: BaselineMovie) => movie.title), ...allMovieTitlesInRepo)
+
+    let tmdbMovies: Array<Movie> = [] 
+    let omdbRatings: Array<OmdbRatings> = [] 
+
+    for (const title of moviesNotInRepo) {
+        const movie = await tmdb.findMovies({title})
+        if (movie!=null) {
+            const ratings = await omdb.findRatings({title})
+            tmdbMovies.push(movie)
+            omdbRatings.push(ratings)
+        }
+        await sleep(1000)
+    }
+    
+    for (let i=0; i<=tmdbMovies.length; i++) {
+        if (tmdbMovies[i]!=null) {
+            upsertMovie({ ...tmdbMovies[i], ...omdbRatings[i]})
+        }
+    }
+    return tmdbMovies.length
 }
 
 const addMovie = (tx: any, movie: Movie) => {
-    return tx.run('CREATE (movie:Movie {title : {title}, posterPath : {posterPath}, overview : {overview}, releaseDate : {releaseDate},' +
-        'genreIds : {genreIds}, originalLanguage : {originalLanguage}, tmdbScore : {tmdbScore}, title : {title}, id : {id},' +
-        'rottenTomatoesScore : {rottenTomatoesScore}, imdbRating : {imdbRating}, metaScore : {metaScore}})', {
+    return tx.run('MERGE (movie:Movie { id: {id}}) ON CREATE SET movie.title={title}, movie.posterPath = {posterPath}, movie.overview = {overview}, movie.releaseDate = {releaseDate},' +
+        'movie.genreIds = {genreIds}, movie.originalLanguage = {originalLanguage}, movie.originalTitle = {originalTitle}, movie.tmdbScore = {tmdbScore}, movie.title = {title}, movie.id = {id},' +
+        'movie.rottenTomatoesScore = {rottenTomatoesScore}, movie.imdbRating = {imdbRating}, movie.metaScore = {metaScore}, movie.netflixTitle = {netflixTitle}', {
             posterPath: movie.posterPath,
             overview: movie.overview,
             releaseDate: movie.releaseDate ? new neo4j.types.Date(movie.releaseDate.getFullYear(), movie.releaseDate.getMonth()+1, movie.releaseDate.getDate()) : null,
             genreIds: movie.genreIds,
             originalLanguage: movie.originalLanguage,
+            originalTitle: movie.originalTitle,
             title: movie.title,
             tmdbScore: movie.tmdbScore,
             id: movie.id,
             rottenTomatoesScore: movie.rottenTomatoesScore,
             imdbRating: movie.imdbRating,
-            metaScore: movie.metaScore
+            metaScore: movie.metaScore,
+            netflixTitle: movie.netflixTitle
         })
 }
 
@@ -78,13 +104,13 @@ export const upsertMovie = (movie: Movie) => {
         .then(() => session.close())
 }
 
-const deleteAllMoviesWithTitlesNotIn = (titles: Array<BaselineMovie>): Promise<number> => {
+const deleteAllMoviesWithTitlesNotIn = (titles: Array<string>): Promise<number> => {
     let session = driver.session()
     let titleCount = 0
 
-    return session.run('match (movie:Movie) where not movie.title IN {titles} detach delete movie', {titles: titles})
-        .then(titles => {
-            this.titleCount = 1
+    return session.run('match (movie:Movie) where not movie.netflixTitle IN {titles} detach delete movie return movie', {titles: titles})
+        .then(statement => {
+            this.titleCount = statement.records.length
         })
         .then(() => {
             return session.run('match (actor:Person) where size((actor)--())=0 delete actor')
@@ -95,41 +121,15 @@ const deleteAllMoviesWithTitlesNotIn = (titles: Array<BaselineMovie>): Promise<n
         })
 }
 
-const getAllMovieTitles = (): Promise<Array<string>> => {
+const getAllNetflixMovieTitles = (): Promise<Array<string>> => {
     let session = driver.session()
 
-    return session.run('match (movie:Movie) return movie.title')
+    return session.run('match (movie:Movie) return movie.netflixTitle')
         .then(statement => {
             session.close()
-            return statement.records.map(record => record.get('title'))
-        })
-
-}
-
-export const baselineMovies = (baselineMovies: Array<BaselineMovie>) => {
-    return deleteAllMoviesWithTitlesNotIn(baselineMovies)
-        .then(deletedCount => {
-            logInfo(`Baseline: removed ${deletedCount} movies from repo`)
-        })
-        .then(() => {
-            return getAllMovieTitles()
-                .then((allMovieTitlesInRepo) => {
-                    let promises:any = []
-                    const moviesNotInRepo = _.differenceWith(baselineMovies, allMovieTitlesInRepo, (x: BaselineMovie,y: string) => x.title !== y)
-                    moviesNotInRepo
-                        .map(title => {
-                            promises.push(tmdb.findMovies(title))
-                            promises.push(omdb.findRatings(title))
-                        })
-        
-                    return Es6Promise.Promise.all(promises).then((values) => {
-                        for (let i=0; i<=values.length-2; i+=2) {
-                            if (values[i] !== null) {
-                                upsertMovie({ ...values[i], ...values[i+1]})
-                            }
-                        }}
-                    )
+            return statement.records.map(record => {
+                return record.get('movie.netflixTitle')
             })
         })
-}
 
+}

@@ -6,9 +6,11 @@ import {
     apiKey
 } from './config'
 import {
-    logError
+    logError, logInfo
 } from '../../services/log/log'
 import { findCredits, Credits } from './find-credits';
+import * as Es6Promise from 'es6-promise'
+import { urlEncode } from '../utils';
 
 export type TheMovieDBMovies = {
     page ?: number,
@@ -34,8 +36,9 @@ export type TheMovieDBMovie = {
     vote_average: number
 }
 
-export const findMovies = (request: MovieRequest): Promise < Movie > => {
-    return axios.get(`${baseUrl}/search/movie?api_key=${apiKey}&query=${request.title}`)
+export const findMovies = async (request: MovieRequest): Es6Promise.Promise < Movie > => {
+    logInfo(`${baseUrl}/search/movie?api_key=${apiKey}&query=${urlEncode(request.title)}`)
+    return axios.get(`${baseUrl}/search/movie?api_key=${apiKey}&query=${urlEncode(request.title)}`)
         .then(response => {
             return toMovie(response.data, request.title)
         })
@@ -60,21 +63,28 @@ const toMovie = (tmdbMovies: TheMovieDBMovies, title: string): Movie => {
         return null
     }
 
-    const tmdbMovie: Array<TheMovieDBMovie> = tmdbMovies.results.filter((tmdbMovie: TheMovieDBMovie) => tmdbMovie.title === title)
+    const tmdbMovie: Array<TheMovieDBMovie> = tmdbMovies.results.filter((tmdbMovie: TheMovieDBMovie) => (tmdbMovie.original_title.toLowerCase().replace(/\s/g, '') === title.toLowerCase().replace(/\s/g, '')) || (tmdbMovie.title.toLowerCase().replace(/\s/g, '') === title.toLowerCase().replace(/\s/g, ''))) 
 
-    if (!tmdbMovie) {
+    if (tmdbMovie.length==0) {
         logError(`Movie ${title} not found`)
+        return null
     }
+
+    logInfo(`tmdbMovie = ${JSON.stringify(tmdbMovie)}`)
 
     let movie: Movie = {
         title: tmdbMovie[0].title,
         posterPath: tmdbMovie[0].poster_path,
         tmdbScore: tmdbMovie[0].vote_average,
         overview: tmdbMovie[0].overview,
-        releaseDate: new Date(tmdbMovie[0].release_date),
+        releaseDate: tmdbMovie[0].release_date ? new Date(tmdbMovie[0].release_date) : null,
         genreIds: tmdbMovie[0].genre_ids,
         id: tmdbMovie[0].id,
-        originalLanguage: tmdbMovie[0].original_language
+        originalLanguage: tmdbMovie[0].original_language,
+        originalTitle: tmdbMovie[0].original_title,
+        netflixTitle: title
     }
+    
+    logInfo(`movie = ${JSON.stringify(movie)}`)
     return movie
 }

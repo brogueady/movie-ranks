@@ -1,7 +1,7 @@
 import { People, Movie } from "../../domain/movies";
 import { baseUrl, apiKey } from "./config";
 import axios from 'axios'
-import { logError } from "../../services/log/log";
+import { logError, logInfo } from "../../services/log/log";
 
 export type Credits = {
     cast: Array<People>,
@@ -9,6 +9,7 @@ export type Credits = {
 }
 
 export const findCredits = (movieId: number): Promise<Credits> => {
+    logInfo(`${baseUrl}/movie/${movieId}/credits?api_key=${apiKey}`)
     return axios.get(`${baseUrl}/movie/${movieId}/credits?api_key=${apiKey}`)
         .then((response: any) => {
             return {cast: toCast(response.data), crew: toDirectors(response.data)}
@@ -20,7 +21,7 @@ export const findCredits = (movieId: number): Promise<Credits> => {
 }
 
 const toCast = (credits: any): Array<People> => {
-    return credits.cast.filter((castMember: any) => castMember.order < 5)
+    return credits.cast.sort((castMember1:any, castMember2:any) => castMember1.order > castMember2.order).filter((castMember: any, index: number) => index < 5)
         .map((castMember: any) => {
             return {
                 id: castMember.id,

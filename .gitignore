@@ -1,6 +1,10 @@
+client/dist
 node_modules
 .history
 client/node_modules
 server/node_modules
+server/**/*.map
 server/**/*.js
+client/**/*.map
 client/**/*.js
+server/log.out
