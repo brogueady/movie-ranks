@@ -46,3 +46,22 @@ export type OmdbRatings = {
 export type BaselineMovie = {
     title: string
 }
+
+export const defaultMovie = ():Movie => {
+    return {
+    id: null,
+    overview: null,
+    posterPath: null,
+    releaseDate: null,
+    tmdbScore: null,
+    rottenTomatoesScore: null,
+    imdbRating: null,
+    originalLanguage: null,
+    metaScore: null,
+    title: null,
+    genreIds: [],
+    netflixTitle: null,
+    cast: [],
+    crew: []
+    }
+}

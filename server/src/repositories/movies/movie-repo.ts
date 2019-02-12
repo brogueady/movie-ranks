@@ -1,37 +1,54 @@
 
-import { MovieSearchRequest, Movie } from '../../domain/movies'
+import { MovieSearchRequest, Movie, People, defaultMovie } from '../../domain/movies'
 import { logError } from '../../services/log/log'
 import { driver } from './neo4j-driver'
+import * as Es6Promise from 'es6-promise'
 
-export const findMovies = (movieRequest: MovieSearchRequest): Promise<Array<Movie>> => {
+export const findMovies = async (movieRequest: MovieSearchRequest): Es6Promise.Promise<Array<Movie>> => {
     let session = driver.session()
-    
     let movies: Array<Movie> = []
 
+    try {
     // Run a Cypher statement, reading the result in a streaming manner as records arrive:
-    return session
-        .run('MATCH(movie) RETURN movie ORDER BY movie.releaseDate SKIP {skipRecordCount} LIMIT 1', {
-            skipRecordCount: movieRequest.skipRecordCount
+    const neo4jResult = await session
+        .run('MATCH    (cast:Person)<-[:HAS_ACTOR]-(movie:Movie) '+
+        'WITH movie, collect(cast) as casts ' +
+        'MATCH    (movie:Movie)-[:HAS_DIRECTOR]->(director:Person) '+
+        'WITH movie, casts, collect(director) as directors '+
+        'RETURN movie{ .*, cast: casts, crew: directors} LIMIT 10')
+
+        movies = neo4jResult.records.map(neomovie => {
+                    return toMovie(neomovie.get('movie'))
         })
-        .then(neo4jResult => {
-            neo4jResult.records.map(movie => movies.push(toMovie(movie.get('movie'))))
-            return movies
-        })
+    } catch(error) { 
+        logError(error.toString()) 
+        throw error
+    }
+
+    return movies
+
 }
 
+const getPeople = (cast:[]): Array<People> => {
+    return cast!=null ? cast.map((person:any) => { return {name: person.properties.name, id: person.properties.id}}) : []
+}
+
+
 const toMovie = (neo4jMovie: any): Movie => {
-    return {
-        id: neo4jMovie.properties.id,
-        overview: neo4jMovie.properties.overview,
-        posterPath: neo4jMovie.properties.posterPath,
-        releaseDate: neo4jMovie.properties.releaseDate,
-        tmdbScore: neo4jMovie.properties.tmdbScore,
-        rottenTomatoesScore: neo4jMovie.properties.rottenTomatoesScore,
-        imdbRating: neo4jMovie.properties.imdbRating,
-        originalLanguage: neo4jMovie.properties.originalLanguage,
-        metaScore: neo4jMovie.properties.metaScore,
-        title: neo4jMovie.properties.title,
-        genreIds: neo4jMovie.properties.genreIds,
-        netflixTitle: neo4jMovie.properties.netflixTitle
-    }
+        return {
+            id : neo4jMovie.id,
+        overview: neo4jMovie.overview,
+        posterPath: neo4jMovie.posterPath,
+        releaseDate: neo4jMovie.releaseDate,
+        tmdbScore: neo4jMovie.tmdbScore,
+        rottenTomatoesScore: neo4jMovie.rottenTomatoesScore,
+        imdbRating: neo4jMovie.imdbRating,
+        originalLanguage: neo4jMovie.originalLanguage,
+        metaScore: neo4jMovie.metaScore,
+        title: neo4jMovie.title,
+        genreIds: neo4jMovie.genreIds,
+        netflixTitle: neo4jMovie.netflixTitle,
+        cast: getPeople(neo4jMovie.cast),
+        crew: getPeople(neo4jMovie.crew)
+        }
 }
