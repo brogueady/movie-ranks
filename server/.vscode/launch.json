@@ -15,6 +15,7 @@
             "request": "launch",
             "name": "Launch Program",
             "program": "${workspaceFolder}/src/index.js",
+            "args": ["adrian.brogan@gamil.com", "Jjb220599"],
             "outFiles": [
                 "${workspaceFolder}/**/*.js"
             ]

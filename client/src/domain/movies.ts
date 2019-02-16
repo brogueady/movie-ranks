@@ -1,10 +1,12 @@
 
 export type MovieRequest = {
     title: string
+    genreIds: Array<number>
+    skipRecordCount?: number
 }
 
-export type MovieSearchRequest = {
-    skipRecordCount?: number
+export const toQueryString = (movieRequest:MovieRequest): string => {
+    return movieRequest.genreIds.join('&genreId=')
 }
 
 export type Movies = {
